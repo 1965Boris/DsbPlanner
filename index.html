@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Desert Storm Planner</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --card: #1a1a22;
+      --border: #2a2a35;
+      --text: #e8e8ed;
+      --muted: #9a9aab;
+      --accent: #7c5cfc;
+      --accent-hover: #6a4aef;
+      --success: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    textarea {
+      width: 100%;
+      height: 220px;
+      background: #121218;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.9rem;
+      padding: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea::placeholder {
+      color: #555;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-assign {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-assign:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-guide {
+      background: #1e1e28;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-guide:hover {
+      background: #252530;
+      border-color: #3a3a48;
+    }
+
+    #result-section {
+      display: none;
+    }
+
+    #result {
+      background: #121218;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn-copy, .btn-clear {
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #1e1e28;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .btn-copy:hover, .btn-clear:hover {
+      background: #252530;
+    }
+
+    .btn-copy.copied {
+      background: #166534;
+      border-color: #166534;
+      color: #dcfce7;
+    }
+
+    .hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Desert Storm Planner</h1>
+      <p>Paste the list → Get Assignments or Full Guide</p>
+    </header>
+
+    <div class="card">
+      <label for="input">Member List (Name,Power)</label>
+      <textarea id="input" placeholder="Bear,104.9
+Fel,104
+GB,91
+Alan,82.3
+AOi,78.8
+Faaღ咕嚕,96.6
+..."></textarea>
+      <p class="hint">One player per line. Format: Name,Power (decimals allowed)</p>
+
+      <div class="mode-buttons">
+        <button class="btn-assign" onclick="generate('assign')">Building Assignments</button>
+        <button class="btn-guide" onclick="generate('guide')">Full Guide</button>
+      </div>
+    </div>
+
+    <div class="card" id="result-section">
+      <label>Result</label>
+      <div id="result"></div>
+      <div class="result-actions">
+        <button class="btn-copy" id="copyBtn" onclick="copyResult()">Copy to Clipboard</button>
+        <button class="btn-clear" onclick="clearResult()">Clear</button>
+      </div>
+    </div>
+
+    <footer>
+      Desert Storm Battlefield Planner · Runs fully in your browser
+    </footer>
+  </div>
+
+  <script>
+    function parseMembers(text) {
+      const members = [];
+      const lines = text.trim().split(/\r?\n/);
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.toLowerCase().startsWith("name")) continue;
+
+        let parts;
+        if (trimmed.includes("\t")) {
+          parts = trimmed.split("\t");
+        } else {
+          parts = trimmed.split(",");
+        }
+
+        if (parts.length < 2) continue;
+
+        const name = parts[0].trim();
+        const powerStr = parts[1].trim().replace(/,/g, "").replace(/\s/g, "");
+        const power = parseFloat(powerStr);
+
+        if (name && !isNaN(power)) {
+          members.push({ name, power });
+        }
+      }
+
+      members.sort((a, b) => b.power - a.power);
+      return members;
+    }
+
+    function generateAssignments(members) {
+      const names = members.map(m => m.name);
+      const n = names.length;
+
+      let floaterCount = Math.min(6, Math.max(4, Math.floor(n / 3)));
+      let hospitalSlots = Math.min(8, n - floaterCount);
+      if (hospitalSlots % 2 !== 0) hospitalSlots -= 1;
+
+      const floaters = names.slice(0, floaterCount);
+      const remaining = names.slice(floaterCount);
+      const hospitals = remaining.slice(0, hospitalSlots);
+      const oilAndBuff = remaining.slice(hospitalSlots);
+
+      let out = [];
+      out.push("**Building Assignments** (ranked by total hero power)\n");
+
+      out.push("**Floaters / Kill Team** (Ash enemies + Nuclear Silo)");
+      floaters.forEach(n => out.push(n));
+      out.push("");
+
+      out.push("**Hospital Holders**");
+      const pairs = [
+        ["Hospital 1", 0],
+        ["Hospital 2", 2],
+        ["Hospital 3", 4],
+        ["Hospital 4", 6]
+      ];
+      pairs.forEach(([label, idx]) => {
+        if (idx < hospitals.length) {
+          const p1 = hospitals[idx];
+          const p2 = hospitals[idx + 1] || "—";
+          out.push(`${p1} + ${p2} → ${label}`);
+        }
+      });
+      out.push("");
+
+      out.push("**Oil Refineries + Buff Buildings**");
+      if (oilAndBuff.length) {
+        const mid = Math.ceil(oilAndBuff.length / 2);
+        const g1 = oilAndBuff.slice(0, mid);
+        const g2 = oilAndBuff.slice(mid);
+        if (g1.length) out.push(`${g1.join(" + ")} → Oil Refinery 1 + Science Hub`);
+        if (g2.length) out.push(`${g2.join(" + ")} → Oil Refinery 2 + Info Center`);
+      }
+      out.push("");
+
+      out.push("---");
+      out.push("**Quick Notes**");
+      out.push("• Hospitals are priority #1. Call for help immediately if attacked.");
+      out.push("• Floaters stay mobile — focus on ashing enemies and contesting Silo after 10:00.");
+      out.push("• Stay flexible if the situation changes.");
+
+      return out.join("\n");
+    }
+
+    function generateFullGuide(members) {
+      const names = members.map(m => m.name);
+      const n = names.length;
+
+      let floaterCount = Math.min(6, Math.max(4, Math.floor(n / 3)));
+      let hospitalSlots = Math.min(8, n - floaterCount);
+      if (hospitalSlots % 2 !== 0) hospitalSlots -= 1;
+
+      const floaters = names.slice(0, floaterCount);
+      const remaining = names.slice(floaterCount);
+      const hospitals = remaining.slice(0, hospitalSlots);
+      const oilAndBuff = remaining.slice(hospitalSlots);
+
+      let out = [];
+      out.push("**Desert Storm Battlefield – Full Guide**\n");
+
+      out.push("**Participants (ranked by total hero power):**");
+      names.forEach(n => out.push(n));
+      out.push("");
+
+      out.push("---\n");
+      out.push("### Core Message");
+      out.push("**Holding all Hospitals + ashing enemy troops = we win.**\n");
+      out.push("Hospitals keep our army alive the whole 30 minutes.");
+      out.push("Strong players focus on ashing enemy whales so they cannot reinforce or contest key buildings.\n");
+
+      out.push("---\n");
+      out.push("### Role Assignment (Flexible)\n");
+
+      out.push("**Floaters / Kill Team** (Ash enemies + Nuclear Silo)");
+      floaters.forEach(n => out.push(n));
+      out.push("");
+
+      out.push("**Hospital Holders** (Priority #1)");
+      const pairs = [
+        ["Hospital 1", 0],
+        ["Hospital 2", 2],
+        ["Hospital 3", 4],
+        ["Hospital 4", 6]
+      ];
+      pairs.forEach(([label, idx]) => {
+        if (idx < hospitals.length) {
+          const p1 = hospitals[idx];
+          const p2 = hospitals[idx + 1] || "—";
+          out.push(`${p1} + ${p2} → ${label}`);
+        }
+      });
+      out.push("");
+
+      out.push("**Oil Refineries + Buff Buildings**");
+      if (oilAndBuff.length) {
+        const mid = Math.ceil(oilAndBuff.length / 2);
+        const g1 = oilAndBuff.slice(0, mid);
+        const g2 = oilAndBuff.slice(mid);
+        if (g1.length) out.push(`${g1.join(" + ")} → Oil Refinery 1 + Science Hub`);
+        if (g2.length) out.push(`${g2.join(" + ")} → Oil Refinery 2 + Info Center`);
+      }
+      out.push("");
+
+      out.push("---\n");
+      out.push("### Stage Plan\n");
+
+      out.push("**0–10 min – Opening**");
+      out.push("1. Lock **all 4 Field Hospitals** first");
+      out.push("2. Rush **Science Hub** the second prep ends");
+      out.push("3. Take both Oil Refineries + Info Center");
+      out.push("4. Strongest squads stage near center (opens at 10:00)\n");
+
+      out.push("**10–20 min – Center Opens**");
+      out.push("Shield drops at exactly 10:00.");
+      out.push("• Grab the **Buff Triangle** first: Arsenal (+15%) + Mercenary Factory (–15% enemy) together with the Silo push.");
+      out.push("• Silo is the biggest points, but do **not** dump everyone into a bad fight.");
+      out.push("• After capturing any building → leave small garrison, move the rest.\n");
+
+      out.push("**20–29:30 min**");
+      out.push("• Oil Wells for backup/low-power squads only (if we are already ahead)");
+      out.push("• If close → keep holding Silo + Hospitals + Arsenal/Merc\n");
+
+      out.push("**29:30 – Final Push**");
+      out.push("Throw everything at key buildings + Supply Boxes. Last-second flips still count.\n");
+
+      out.push("---\n");
+      out.push("### Critical Tactics\n");
+
+      out.push("**Wall Defense – ON / OFF**");
+      out.push("• Never leave wall completely empty. One weak hero is better than zero.");
+      out.push("• Stronger enemy incoming → Turn wall **OFF**, reinforce ally or building.");
+      out.push("• Weaker/equal enemy → Turn wall **ON** with main squad.\n");
+
+      out.push("**Attack Smart**");
+      out.push("• Enemy wall empty/OFF? Hit their base with second squad.");
+      out.push("• Keep main squad on your own wall.");
+      out.push("• Empty building? Send weaker squads to capture it.\n");
+
+      out.push("**Other Rules**");
+      out.push("• Save teleports for reinforcing under attack.");
+      out.push("• Collect every Supply Box.");
+      out.push("• Stay flexible — call for help the second a Hospital is pressured.\n");
+
+      out.push("---");
+      out.push("We hold the Hospitals and ash their troops → we win this.");
+      out.push("Any questions before the match, ask in chat.");
+      out.push("Let’s go.");
+
+      return out.join("\n");
+    }
+
+    function generate(mode) {
+      const text = document.getElementById("input").value;
+      const members = parseMembers(text);
+
+      if (members.length === 0) {
+        alert("No valid members found.\nPlease use format:\nName,Power");
+        return;
+      }
+
+      let result;
+      if (mode === "assign") {
+        result = generateAssignments(members);
+      } else {
+        result = generateFullGuide(members);
+      }
+
+      document.getElementById("result").textContent = result;
+      document.getElementById("result-section").style.display = "block";
+      document.getElementById("result-section").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function copyResult() {
+      const text = document.getElementById("result").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById("copyBtn");
+        btn.textContent = "Copied!";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.textContent = "Copy to Clipboard";
+          btn.classList.remove("copied");
+        }, 2000);
+      });
+    }
+
+    function clearResult() {
+      document.getElementById("result-section").style.display = "none";
+      document.getElementById("result").textContent = "";
+    }
+  </script>
+</body>
+</html>
