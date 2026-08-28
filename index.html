@@ -129,11 +129,12 @@
       border-color: #3a3a48;
     }
 
-    #result-section {
+    #result-section,
+    #history-section {
       display: none;
     }
 
-    #result {
+    #result, #history-view {
       background: #121218;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -145,13 +146,14 @@
       overflow-y: auto;
     }
 
-    .result-actions {
+    .result-actions, .history-actions {
       display: flex;
       gap: 10px;
       margin-top: 14px;
+      flex-wrap: wrap;
     }
 
-    .btn-copy, .btn-clear {
+    .btn-copy, .btn-clear, .btn-small {
       padding: 10px 18px;
       font-size: 0.9rem;
       border-radius: 6px;
@@ -161,7 +163,7 @@
       cursor: pointer;
     }
 
-    .btn-copy:hover, .btn-clear:hover {
+    .btn-copy:hover, .btn-clear:hover, .btn-small:hover {
       background: #252530;
     }
 
@@ -175,6 +177,54 @@
       font-size: 0.82rem;
       color: var(--muted);
       margin-top: 10px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .stat {
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: #121218;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .history-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      background: #121218;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+      background: #16161e;
+    }
+
+    .history-meta {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 400;
     }
 
     footer {
@@ -261,8 +311,23 @@ Faa,96.6
       </div>
     </div>
 
+    <div class="card" id="history-section">
+      <label>History on this device</label>
+      <p class="hint" style="margin-top:0;margin-bottom:12px;">Saved only in this browser. Player lists are not uploaded.</p>
+      <ul class="history-list" id="history-list"></ul>
+      <div id="history-view" style="display:none;margin-top:12px;"></div>
+      <div class="history-actions">
+        <button class="btn-small" onclick="exportHistory()">Export log</button>
+        <button class="btn-small" onclick="clearHistory()">Clear history</button>
+      </div>
+    </div>
+
     <footer>
       Desert Storm Battlefield Planner · Runs fully in your browser
+      <div class="stats">
+        <img id="visitBadge" alt="Visits" height="20" />
+        <span class="stat" id="localStats">This device: 0 visits, 0 generated</span>
+      </div>
       <div class="discord">
         <button type="button" class="discord-id" id="discordBtn" onclick="copyDiscord()" title="Copy Discord username">
           <svg class="discord-logo" viewBox="0 0 127.14 96.36" aria-hidden="true">
@@ -276,6 +341,9 @@ Faa,96.6
 
   <script>
     const DISCORD_ID = "ajincible";
+    const HISTORY_KEY = "dsb_history_v1";
+    const STATS_KEY = "dsb_stats_v1";
+    const MAX_HISTORY = 20;
 
     function parseMembers(text) {
       const members = [];
@@ -457,6 +525,95 @@ Faa,96.6
       return out.join("\n");
     }
 
+    function readStats() {
+      try {
+        return JSON.parse(localStorage.getItem(STATS_KEY)) || { visits: 0, generated: 0 };
+      } catch (e) {
+        return { visits: 0, generated: 0 };
+      }
+    }
+
+    function writeStats(stats) {
+      localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+    }
+
+    function readHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function writeHistory(items) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, MAX_HISTORY)));
+    }
+
+    function formatWhen(iso) {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      const pad = n => String(n).padStart(2, "0");
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+        " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
+
+    function renderLocalStats() {
+      const stats = readStats();
+      document.getElementById("localStats").textContent =
+        "This device: " + stats.visits + " visits, " + stats.generated + " generated";
+    }
+
+    function renderHistory() {
+      const items = readHistory();
+      const section = document.getElementById("history-section");
+      const list = document.getElementById("history-list");
+      list.innerHTML = "";
+      if (!items.length) {
+        section.style.display = "none";
+        return;
+      }
+      section.style.display = "block";
+      items.forEach((item, idx) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "history-item";
+        const kind = item.mode === "guide" ? "Full Guide" : "Assignments";
+        btn.innerHTML = kind + " · " + item.count + " players" +
+          "<div class=\"history-meta\">" + formatWhen(item.at) + "</div>";
+        btn.onclick = function () { showHistoryItem(idx); };
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+    }
+
+    function showHistoryItem(idx) {
+      const items = readHistory();
+      const item = items[idx];
+      if (!item) return;
+      const view = document.getElementById("history-view");
+      view.style.display = "block";
+      view.textContent = item.text;
+      document.getElementById("result").textContent = item.text;
+      document.getElementById("result-section").style.display = "block";
+    }
+
+    function saveGeneration(mode, count, text) {
+      const items = readHistory();
+      items.unshift({
+        at: new Date().toISOString(),
+        mode: mode,
+        count: count,
+        text: text
+      });
+      writeHistory(items);
+      const stats = readStats();
+      stats.generated += 1;
+      writeStats(stats);
+      renderLocalStats();
+      renderHistory();
+    }
+
     function generate(mode) {
       const text = document.getElementById("input").value;
       const members = parseMembers(text);
@@ -473,6 +630,7 @@ Faa,96.6
       document.getElementById("result").textContent = result;
       document.getElementById("result-section").style.display = "block";
       document.getElementById("result-section").scrollIntoView({ behavior: "smooth" });
+      saveGeneration(mode, members.length, result);
     }
 
     function copyResult() {
@@ -505,6 +663,41 @@ Faa,96.6
       document.getElementById("result-section").style.display = "none";
       document.getElementById("result").textContent = "";
     }
+
+    function exportHistory() {
+      const items = readHistory();
+      if (!items.length) return;
+      const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dsb-planner-history.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearHistory() {
+      if (!confirm("Clear generation history on this device?")) return;
+      writeHistory([]);
+      document.getElementById("history-view").style.display = "none";
+      renderHistory();
+    }
+
+    function trackVisit() {
+      const stats = readStats();
+      stats.visits += 1;
+      writeStats(stats);
+      renderLocalStats();
+
+      const pageUrl = location.origin + location.pathname;
+      const badge = document.getElementById("visitBadge");
+      badge.src = "https://hitscounter.dev/api/hit?url=" +
+        encodeURIComponent(pageUrl) +
+        "&label=Visits&icon=eye-outline&color=%237c5cfc";
+    }
+
+    trackVisit();
+    renderHistory();
   </script>
 </body>
 </html>
