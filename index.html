@@ -183,6 +183,37 @@
       color: var(--muted);
       font-size: 0.8rem;
     }
+
+    .discord {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .discord-id {
+      flex: none;
+      padding: 4px 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 999px;
+      border: 1px solid #5865f2;
+      background: #1b1c2e;
+      color: #c4c8ff;
+      cursor: pointer;
+    }
+
+    .discord-id:hover {
+      background: #25264a;
+    }
+
+    .discord-id.copied {
+      border-color: #166534;
+      background: #166534;
+      color: #dcfce7;
+    }
   </style>
 </head>
 <body>
@@ -199,7 +230,7 @@ Fel,104
 GB,91
 Alan,82.3
 AOi,78.8
-Faaۚ咕囔,96.6
+Faa,96.6
 ..."></textarea>
       <p class="hint">One player per line. Format: Name,Power (decimals allowed)</p>
 
@@ -220,10 +251,16 @@ Faaۚ咕囔,96.6
 
     <footer>
       Desert Storm Battlefield Planner · Runs fully in your browser
+      <div class="discord">
+        Discord
+        <button type="button" class="discord-id" id="discordBtn" onclick="copyDiscord()" title="Copy Discord username">ajincible</button>
+      </div>
     </footer>
   </div>
 
   <script>
+    const DISCORD_ID = "ajincible";
+
     function parseMembers(text) {
       const members = [];
       const lines = text.trim().split(/\r?\n/);
@@ -429,14 +466,27 @@ Faaۚ咕囔,96.6
         btn.textContent = "Copied!";
         btn.classList.add("copied");
         setTimeout(() => {
-          btn.textContent = "Copy to Clipboard");
+          btn.textContent = "Copy to Clipboard";
           btn.classList.remove("copied");
         }, 2000);
       });
     }
 
+    function copyDiscord() {
+      const btn = document.getElementById("discordBtn");
+      navigator.clipboard.writeText(DISCORD_ID).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = "copied";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove("copied");
+        }, 1600);
+      });
+    }
+
     function clearResult() {
-      document.getElementById("result-section").style.display = "none");
+      document.getElementById("result-section").style.display = "none";
       document.getElementById("result").textContent = "";
     }
   </script>
