@@ -140,7 +140,7 @@
       padding: 20px;
       font-size: 0.92rem;
       white-space: pre-wrap;
-      line-height: 1.6;
+      line-height: 1.55;
       max-height: 70vh;
       overflow-y: auto;
     }
@@ -199,7 +199,7 @@ Fel,104
 GB,91
 Alan,82.3
 AOi,78.8
-Faaღ咕嚕,96.6
+Faaۚ咕囔,96.6
 ..."></textarea>
       <p class="hint">One player per line. Format: Name,Power (decimals allowed)</p>
 
@@ -254,7 +254,7 @@ Faaღ咕嚕,96.6
       return members;
     }
 
-    function generateAssignments(members) {
+    function splitRoster(members) {
       const names = members.map(m => m.name);
       const n = names.length;
 
@@ -267,141 +267,139 @@ Faaღ咕嚕,96.6
       const hospitals = remaining.slice(0, hospitalSlots);
       const oilAndBuff = remaining.slice(hospitalSlots);
 
-      let out = [];
-      out.push("**Building Assignments** \n");
+      return { floaters, hospitals, oilAndBuff };
+    }
 
-      out.push("**Floaters / Kill Team** (Ash enemies + Nuclear Silo)");
-      floaters.forEach(n => out.push(n));
-      out.push("");
-
-      out.push("**Hospital Holders**");
+    function hospitalLines(hospitals) {
       const pairs = [
         ["Hospital 1", 0],
         ["Hospital 2", 2],
         ["Hospital 3", 4],
         ["Hospital 4", 6]
       ];
+      const lines = [];
       pairs.forEach(([label, idx]) => {
         if (idx < hospitals.length) {
           const p1 = hospitals[idx];
-          const p2 = hospitals[idx + 1] || "—";
-          out.push(`${p1} + ${p2} → ${label}`);
+          const p2 = hospitals[idx + 1] || "-";
+          lines.push(p1 + " + " + p2 + " -> " + label);
         }
       });
+      return lines;
+    }
+
+    function oilLines(oilAndBuff) {
+      const lines = [];
+      if (!oilAndBuff.length) return lines;
+      const mid = Math.ceil(oilAndBuff.length / 2);
+      const g1 = oilAndBuff.slice(0, mid);
+      const g2 = oilAndBuff.slice(mid);
+      if (g1.length) lines.push(g1.join(" + ") + " -> Oil Refinery 1 + Science Hub");
+      if (g2.length) lines.push(g2.join(" + ") + " -> Oil Refinery 2 + Info Center");
+      return lines;
+    }
+
+    function generateAssignments(members) {
+      const { floaters, hospitals, oilAndBuff } = splitRoster(members);
+      const out = [];
+
+      out.push("BUILDING ASSIGNMENTS");
       out.push("");
 
-      out.push("**Oil Refineries + Buff Buildings**");
-      if (oilAndBuff.length) {
-        const mid = Math.ceil(oilAndBuff.length / 2);
-        const g1 = oilAndBuff.slice(0, mid);
-        const g2 = oilAndBuff.slice(mid);
-        if (g1.length) out.push(`${g1.join(" + ")} → Oil Refinery 1 + Science Hub`);
-        if (g2.length) out.push(`${g2.join(" + ")} → Oil Refinery 2 + Info Center`);
+      out.push("Floaters / Kill Team (Ash enemies + Nuclear Silo)");
+      floaters.forEach(name => out.push(name));
+      out.push("");
+
+      out.push("Hospital Holders");
+      hospitalLines(hospitals).forEach(line => out.push(line));
+      out.push("");
+
+      out.push("Oil Refineries + Buff Buildings");
+      const oils = oilLines(oilAndBuff);
+      if (oils.length) {
+        oils.forEach(line => out.push(line));
+      } else {
+        out.push("None assigned");
       }
       out.push("");
 
-      out.push("---");
-      out.push("**Quick Notes**");
-      out.push("• Hospitals are priority #1. Call for help immediately if attacked.");
-      out.push("• Floaters stay mobile — focus on ashing enemies and contesting Silo after 10:00.");
-      out.push("• Stay flexible if the situation changes.");
+      out.push("QUICK NOTES");
+      out.push("- Hospitals are priority #1. Call for help immediately if attacked.");
+      out.push("- Floaters stay mobile. Focus on ashing enemies and contesting Silo after 10:00.");
+      out.push("- Stay flexible if the situation changes.");
 
       return out.join("\n");
     }
 
     function generateFullGuide(members) {
-      const names = members.map(m => m.name);
-      const n = names.length;
+      const { floaters, hospitals, oilAndBuff } = splitRoster(members);
+      const out = [];
 
-      let floaterCount = Math.min(6, Math.max(4, Math.floor(n / 3)));
-      let hospitalSlots = Math.min(8, n - floaterCount);
-      if (hospitalSlots % 2 !== 0) hospitalSlots -= 1;
+      out.push("DESERT STORM BATTLEFIELD - FULL GUIDE");
+      out.push("");
 
-      const floaters = names.slice(0, floaterCount);
-      const remaining = names.slice(floaterCount);
-      const hospitals = remaining.slice(0, hospitalSlots);
-      const oilAndBuff = remaining.slice(hospitalSlots);
-
-      let out = [];
-      out.push("**Desert Storm Battlefield – Full Guide**\n");
-
-      out.push("### Core Message");
-      out.push("**Holding all Hospitals + ashing enemy troops = we win.**\n");
+      out.push("CORE MESSAGE");
+      out.push("Holding all Hospitals + ashing enemy troops = we win.");
       out.push("Hospitals keep our army alive the whole 30 minutes.");
-      out.push("Strong players focus on ashing enemy whales so they cannot reinforce or contest key buildings.\n");
-
-      out.push("---\n");
-      out.push("### Role Assignment (Flexible)\n");
-
-      out.push("**Floaters / Kill Team** (Ash enemies + Nuclear Silo)");
-      floaters.forEach(n => out.push(n));
+      out.push("Strong players focus on ashing enemy whales so they cannot reinforce or contest key buildings.");
       out.push("");
 
-      out.push("**Hospital Holders** (Priority #1)");
-      const pairs = [
-        ["Hospital 1", 0],
-        ["Hospital 2", 2],
-        ["Hospital 3", 4],
-        ["Hospital 4", 6]
-      ];
-      pairs.forEach(([label, idx]) => {
-        if (idx < hospitals.length) {
-          const p1 = hospitals[idx];
-          const p2 = hospitals[idx + 1] || "—";
-          out.push(`${p1} + ${p2} → ${label}`);
-        }
-      });
+      out.push("ROLE ASSIGNMENT (FLEXIBLE)");
+      out.push("");
+      out.push("Floaters / Kill Team (Ash enemies + Nuclear Silo)");
+      floaters.forEach(name => out.push(name));
       out.push("");
 
-      out.push("**Oil Refineries + Buff Buildings**");
-      if (oilAndBuff.length) {
-        const mid = Math.ceil(oilAndBuff.length / 2);
-        const g1 = oilAndBuff.slice(0, mid);
-        const g2 = oilAndBuff.slice(mid);
-        if (g1.length) out.push(`${g1.join(" + ")} → Oil Refinery 1 + Science Hub`);
-        if (g2.length) out.push(`${g2.join(" + ")} → Oil Refinery 2 + Info Center`);
+      out.push("Hospital Holders (Priority #1)");
+      hospitalLines(hospitals).forEach(line => out.push(line));
+      out.push("");
+
+      out.push("Oil Refineries + Buff Buildings");
+      const oils = oilLines(oilAndBuff);
+      if (oils.length) {
+        oils.forEach(line => out.push(line));
+      } else {
+        out.push("None assigned");
       }
       out.push("");
 
-      out.push("---\n");
-      out.push("### Stage Plan\n");
-
-      out.push("**0–10 min – Opening**");
-      out.push("1. Lock **all 4 Field Hospitals** first");
-      out.push("2. Rush **Science Hub** the second prep ends");
+      out.push("STAGE PLAN");
+      out.push("");
+      out.push("0-10 min - Opening");
+      out.push("1. Lock all 4 Field Hospitals first");
+      out.push("2. Rush Science Hub the second prep ends");
       out.push("3. Take both Oil Refineries + Info Center");
-      out.push("4. Strongest squads stage near center (opens at 10:00)\n");
-
-      out.push("**10–20 min – Center Opens**");
+      out.push("4. Strongest squads stage near center (opens at 10:00)");
+      out.push("");
+      out.push("10-20 min - Center Opens");
       out.push("Shield drops at exactly 10:00.");
-      out.push("• Grab the **Buff Triangle** first: Arsenal (+15%) + Mercenary Factory (–15% enemy) together with the Silo push.");
-      out.push("• Silo is the biggest points, but do **not** dump everyone into a bad fight.");
-      out.push("• After capturing any building → leave small garrison, move the rest.\n");
+      out.push("- Grab the Buff Triangle first: Arsenal (+15%) + Mercenary Factory (-15% enemy) together with the Silo push.");
+      out.push("- Silo is the biggest points, but do not dump everyone into a bad fight.");
+      out.push("- After capturing any building, leave a small garrison and move the rest.");
+      out.push("");
+      out.push("20-29:30 min");
+      out.push("- Oil Wells for backup / low-power squads only (if we are already ahead)");
+      out.push("- If close, keep holding Silo + Hospitals + Arsenal / Merc");
+      out.push("");
+      out.push("29:30 - Final Push");
+      out.push("Throw everything at key buildings + Supply Boxes. Last-second flips still count.");
+      out.push("");
 
-      out.push("**20–29:30 min**");
-      out.push("• Oil Wells for backup/low-power squads only (if we are already ahead)");
-      out.push("• If close → keep holding Silo + Hospitals + Arsenal/Merc\n");
-
-      out.push("**29:30 – Final Push**");
-      out.push("Throw everything at key buildings + Supply Boxes. Last-second flips still count.\n");
-
-      out.push("---\n");
-      out.push("### Critical Tactics\n");
-
-      out.push("**Wall Defense – ON / OFF**");
-      out.push("• Never leave wall completely empty. One weak hero is better than zero.");
-      out.push("• Stronger enemy incoming → Turn wall **OFF**, reinforce ally or building.");
-      out.push("• Weaker/equal enemy → Turn wall **ON** with main squad.\n");
-
-      out.push("**Attack Smart**");
-      out.push("• Enemy wall empty/OFF? Hit their base with second squad.");
-      out.push("• Keep main squad on your own wall.");
-      out.push("• Empty building? Send weaker squads to capture it.\n");
-
-      out.push("---");
-      out.push("We hold the Hospitals and ash their troops → we win this.");
+      out.push("CRITICAL TACTICS");
+      out.push("");
+      out.push("Wall Defense - ON / OFF");
+      out.push("- Never leave wall completely empty. One weak hero is better than zero.");
+      out.push("- Stronger enemy incoming: turn wall OFF, reinforce ally or building.");
+      out.push("- Weaker or equal enemy: turn wall ON with main squad.");
+      out.push("");
+      out.push("Attack Smart");
+      out.push("- Enemy wall empty or OFF? Hit their base with second squad.");
+      out.push("- Keep main squad on your own wall.");
+      out.push("- Empty building? Send weaker squads to capture it.");
+      out.push("");
+      out.push("We hold the Hospitals and ash their troops, we win this.");
       out.push("Any questions before the match, ask in chat.");
-      out.push("Let’s go.");
+      out.push("Let's go.");
 
       return out.join("\n");
     }
@@ -415,12 +413,9 @@ Faaღ咕嚕,96.6
         return;
       }
 
-      let result;
-      if (mode === "assign") {
-        result = generateAssignments(members);
-      } else {
-        result = generateFullGuide(members);
-      }
+      const result = mode === "assign"
+        ? generateAssignments(members)
+        : generateFullGuide(members);
 
       document.getElementById("result").textContent = result;
       document.getElementById("result-section").style.display = "block";
@@ -434,14 +429,14 @@ Faaღ咕嚕,96.6
         btn.textContent = "Copied!";
         btn.classList.add("copied");
         setTimeout(() => {
-          btn.textContent = "Copy to Clipboard";
+          btn.textContent = "Copy to Clipboard");
           btn.classList.remove("copied");
         }, 2000);
       });
     }
 
     function clearResult() {
-      document.getElementById("result-section").style.display = "none";
+      document.getElementById("result-section").style.display = "none");
       document.getElementById("result").textContent = "";
     }
   </script>
